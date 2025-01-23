@@ -12,7 +12,7 @@
       margin: 0;
       padding: 0;
     }
-    
+
     .container {
       max-width: 800px;
       margin: 50px auto;
@@ -21,54 +21,57 @@
       border-radius: 5px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
     h1 {
       text-align: center;
       margin-bottom: 20px;
     }
-    
+
     form {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       margin-bottom: 20px;
     }
-    
+
     form input,
     form button {
       padding: 10px;
       font-size: 16px;
+      flex: 1;
     }
-    
+
     form button {
       background: #007bff;
       color: white;
       border: none;
       cursor: pointer;
+      flex: 0 0 auto;
     }
-    
+
     form button:hover {
       background: #0056b3;
     }
-    
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
     }
-    
+
     table, th, td {
       border: 1px solid #ddd;
     }
-    
+
     th, td {
       padding: 10px;
       text-align: left;
     }
-    
+
     th {
       background-color: #f4f4f9;
     }
-    
+
     button {
       background: #007bff;
       color: white;
@@ -77,9 +80,15 @@
       padding: 5px 10px;
       margin-left: 10px;
     }
-    
+
     button:hover {
       background: #0056b3;
+    }
+
+    img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
     }
   </style>
 </head>
@@ -90,7 +99,7 @@
       <input type="hidden" id="id" />
       <input type="text" id="name" placeholder="Enter Name" required />
       <input type="text" id="email" placeholder="Enter Email" required />
-      <input type="text" id="image" placeholder="Enter image url" required />
+      <input type="file" id="image" accept="image/*" required />
       <button type="submit">ADD</button>
     </form>
     <table id="data-table">
@@ -114,76 +123,83 @@
     async function fetchData() {
       const res = await fetch(API_URL);
       const data = await res.json();
-      renderData(data);  // Pass the fetched data to renderData
+      renderData(data);
     }
 
     // Function to render the fetched data in a table
     function renderData(data) {
-      dataList.innerHTML = "";  // Clear existing table data
+      dataList.innerHTML = ""; // Clear existing table data
       data.forEach(item => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${item.name}</td>
           <td>${item.email}</td>
-          <td> <img src="${item.Image}" style="width:50px"/></td>
+          <td><img src="${item.image}" alt="User Image"></td>
           <td>
-            <button class="edit" onclick="editData(${item.id}, '${item.name}', '${item.email}')">Edit</button>
+            <button class="edit" onclick="editData(${item.id}, '${item.name}', '${item.email}', '${item.image}')">Edit</button>
             <button onclick="deleteData(${item.id})">Delete</button>
           </td>
         `;
-        dataList.appendChild(row);  // Append the row to the table body
+        dataList.appendChild(row);
       });
-    //use of base 64 image
     }
-    function convertToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);  // Resolve with Base64 string
-    reader.onerror = (error) => reject(error);    // Reject if error occurs
-    reader.readAsDataURL(file);                   // Convert image to Base64
-  });
-}
 
-    // Event listener to handle form submission for adding or updating users
+    // Convert file to Base64
+    function convertToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Handle form submission for adding or updating users
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = document.getElementById("id").value;
       const name = document.getElementById("name").value;
       const email = document.getElementById("email").value;
-      const image = document.getElementById("image").value;
-      
+      const imageFile = document.getElementById("image").files[0];
+
+      if (!imageFile) {
+        alert("Please select an image.");
+        return;
+      }
+
+      const imageBase64 = await convertToBase64(imageFile);
+
       if (id) {
         // PUT request to update an existing record
         await fetch(`${API_URL}/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email }),
+          body: JSON.stringify({ name, email, image: imageBase64 }),
         });
       } else {
         // POST request to add a new record
         await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email }),
+          body: JSON.stringify({ name, email, image: imageBase64 }),
         });
       }
 
-      form.reset();  // Reset the form fields
-      fetchData();  // Fetch the updated data and render it
+      form.reset(); // Reset the form fields
+      fetchData(); // Fetch the updated data and render it
     });
 
     // Function to handle deleting a user
     async function deleteData(id) {
       await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-      fetchData();  // Fetch updated data after deletion
+      fetchData();
     }
 
     // Function to handle editing a user
-    function editData(id, name, email) {
+    function editData(id, name, email, image) {
       document.getElementById("id").value = id;
       document.getElementById("name").value = name;
       document.getElementById("email").value = email;
-      document.getElementById("image").value = image;
     }
 
     // Fetch data when the page loads
